@@ -1,0 +1,15 @@
+#!/command/with-contenv sh
+# Added for OpenShip: the image ships no scheduler. Fire due routines every minute and
+# cull unsent attachments hourly, inside this container where the embedded DB lives.
+cd /app/server
+export HOME=/home/apiuser
+sleep 60
+n=0
+while true; do
+  s6-setuidgid apiuser /usr/local/bin/bun scripts/fire-routines.ts || echo "sweeper: fire-routines failed" >&2
+  n=$((n+1))
+  if [ $((n % 60)) -eq 1 ]; then
+    s6-setuidgid apiuser /usr/local/bin/bun scripts/cull-staged-attachments.ts || echo "sweeper: cull failed" >&2
+  fi
+  sleep 60
+done
